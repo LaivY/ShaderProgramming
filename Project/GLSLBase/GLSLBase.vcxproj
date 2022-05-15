@@ -172,6 +172,8 @@
   <ItemGroup>
     <None Include="Shaders\SolidRect.fs" />
     <None Include="Shaders\SolidRect.vs" />
+    <None Include="Shaders\test.fs" />
+    <None Include="Shaders\test.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <cassert>
 
-Renderer::Renderer(int windowSizeX, int windowSizeY)
+Renderer::Renderer(int windowSizeX, int windowSizeY) : m_Initialized{ false }, m_WindowSizeX{ 0 }, m_WindowSizeY{ 0 }, m_VBORect{ 0 }, m_SolidRectShader{ 0 }
 {
 	//default settings
 	glClearDepth(1.f);
@@ -13,9 +13,77 @@ Renderer::Renderer(int windowSizeX, int windowSizeY)
 	Initialize(windowSizeX, windowSizeY);
 }
 
-
-Renderer::~Renderer()
+GLuint Renderer::CreatePngTexture(char* filePath)
 {
+	//Load Pngs: Load file and decode image.
+	std::vector<unsigned char> image;
+	unsigned width, height;
+	unsigned error = lodepng::decode(image, width, height, filePath);
+	if (error != 0)
+	{
+		lodepng_error_text(error);
+		assert(error == 0);
+		return -1;
+	}
+
+	GLuint temp;
+	glGenTextures(1, &temp);
+
+	glBindTexture(GL_TEXTURE_2D, temp);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &image[0]);
+
+	return temp;
+}
+
+GLuint Renderer::CreateBmpTexture(char* filePath)
+{
+	//Load Bmp: Load file and decode image.
+	unsigned int width, height;
+	unsigned char* bmp
+		= loadBMPRaw(filePath, width, height);
+
+	if (bmp == NULL)
+	{
+		std::cout << "Error while loading bmp file : " << filePath << std::endl;
+		assert(bmp != NULL);
+		return -1;
+	}
+
+	GLuint temp;
+	glGenTextures(1, &temp);
+
+	glBindTexture(GL_TEXTURE_2D, temp);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bmp);
+
+	return temp;
+}
+
+float u_time = 1.0f;
+
+void Renderer::Render()
+{
+	GLuint shader{ m_testShader };
+	glUseProgram(shader);
+
+	int attribPosition = glGetAttribLocation(shader, "a_Position");
+	glEnableVertexAttribArray(attribPosition);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBOLecture);
+	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+	glUniform1f(uniformLocTime, u_time);
+
+	u_time -= 0.01f;
+	if (u_time < 0.1f)
+		u_time = 1.0f;
+
+	glDisableVertexAttribArray(attribPosition);
 }
 
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
@@ -26,7 +94,8 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 
 	//Load shaders
 	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
-	
+	m_testShader = CompileShaders("./Shaders/test.vs", "./Shaders/test.fs");
+
 	//Create VBOs
 	CreateVertexBufferObjects();
 
@@ -58,32 +127,44 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 void Renderer::CreateVertexBufferObjects()
 {
 	float rect[]
-		=
 	{
-		-0.5, -0.5, 0.f, -0.5, 0.5, 0.f, 0.5, 0.5, 0.f, //Triangle1
-		-0.5, -0.5, 0.f,  0.5, 0.5, 0.f, 0.5, -0.5, 0.f, //Triangle2
-	};
+		// Triangle1
+		-0.5, -0.5, 0.0f,
+		-0.5,  0.5, 0.0f,
+		 0.5,  0.5, 0.0f,
 
-	glGenBuffers(1, &m_VBORect);
-	glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(rect), rect, GL_STATIC_DRAW);
+		// Triangle2
+		-0.5, -0.5, 0.0f,
+		 0.5,  0.5, 0.0f,
+		 0.5, -0.5, 0.0f,
+	};
+	glGenBuffers(1, &m_VBORect);										// 버퍼 생성
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);							// GPU에 이 버퍼가 어떤 형태(GL_ARRAY_BUFFER)인지를 알려줌(바인드)
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rect), rect, GL_STATIC_DRAW);	// 바인드된 VBO에 데이터 할당. CPU -> GPU로 데이터 업로드
+
+	float lecture[]
+	{
+		0.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 1.0f, 0.0f
+	};
+	glGenBuffers(1, &m_VBOLecture);
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBOLecture);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(lecture), lecture, GL_STATIC_DRAW);
 }
 
 void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
 {
-	//쉐이더 오브젝트 생성
+	// 쉐이더 오브젝트 생성
 	GLuint ShaderObj = glCreateShader(ShaderType);
 
 	if (ShaderObj == 0) {
 		fprintf(stderr, "Error creating shader type %d\n", ShaderType);
 	}
 
-	const GLchar* p[1];
-	p[0] = pShaderText;
-	GLint Lengths[1];
-	Lengths[0] = (GLint)strlen(pShaderText);
-	//쉐이더 코드를 쉐이더 오브젝트에 할당
-	glShaderSource(ShaderObj, 1, p, Lengths);
+	// 쉐이더 코드를 쉐이더 오브젝트에 할당
+	GLint length = (GLint)strlen(pShaderText);
+	glShaderSource(ShaderObj, 1, &pShaderText, &length);
 
 	//할당된 쉐이더 코드를 컴파일
 	glCompileShader(ShaderObj);
@@ -178,7 +259,8 @@ GLuint Renderer::CompileShaders(char* filenameVS, char* filenameFS)
 
 	return ShaderProgram;
 }
-unsigned char * Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWidth, unsigned int& outHeight)
+
+unsigned char* Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWidth, unsigned int& outHeight)
 {
 	std::cout << "Loading bmp file " << imagepath << " ... " << std::endl;
 	outWidth = -1;
@@ -245,65 +327,109 @@ unsigned char * Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWi
 	return data;
 }
 
-GLuint Renderer::CreatePngTexture(char * filePath)
-{
-	//Load Pngs: Load file and decode image.
-	std::vector<unsigned char> image;
-	unsigned width, height;
-	unsigned error = lodepng::decode(image, width, height, filePath);
-	if (error != 0)
-	{
-		lodepng_error_text(error);
-		assert(error == 0);
-		return -1;
-	}
-
-	GLuint temp;
-	glGenTextures(1, &temp);
-
-	glBindTexture(GL_TEXTURE_2D, temp);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &image[0]);
-
-	return temp;
-}
-
-GLuint Renderer::CreateBmpTexture(char * filePath)
-{
-	//Load Bmp: Load file and decode image.
-	unsigned int width, height;
-	unsigned char * bmp
-		= loadBMPRaw(filePath, width, height);
-
-	if (bmp == NULL)
-	{
-		std::cout << "Error while loading bmp file : " << filePath << std::endl;
-		assert(bmp != NULL);
-		return -1;
-	}
-
-	GLuint temp;
-	glGenTextures(1, &temp);
-
-	glBindTexture(GL_TEXTURE_2D, temp);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bmp);
-
-	return temp;
-}
-
-void Renderer::Test()
-{
-	glUseProgram(m_SolidRectShader);
-
-	int attribPosition = glGetAttribLocation(m_SolidRectShader, "a_Position");
-	glEnableVertexAttribArray(attribPosition);
-	glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);
-	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-
-	glDisableVertexAttribArray(attribPosition);
-}
+//void Renderer::CreateParticle(int count)
+//{
+//	int floatCount = count * (3 + 3) * 3 * 2; //(x, y, z, vx, vy, vz)
+//	float* particleVertices = new float[floatCount];
+//	int vertexCount = count * 3 * 2;
+//	int index = 0;
+//	float particleSize = 0.01f;
+//	for (int i = 0; i < count; i++)
+//	{
+//		float randomValueX = 0.f;
+//		float randomValueY = 0.f;
+//		float randomValueZ = 0.f;
+//		float randomValueVX = 0.f;
+//		float randomValueVY = 0.f;
+//		float randomValueVZ = 0.f;
+//		randomValueX = ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+//		randomValueY = ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+//		randomValueZ = 0.f;
+//		randomValueVX = ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+//		randomValueVY = ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+//		randomValueVZ = 0.f;
+//		//v0
+//		particleVertices[index] = -particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = -particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Position XYZ
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//		//v1
+//		particleVertices[index] = particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = -particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++;
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//		//v2
+//		particleVertices[index] = particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++;
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//		//v3
+//		particleVertices[index] = -particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = -particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++;
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//		//v4
+//		particleVertices[index] = particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++;
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//		//v5
+//		particleVertices[index] = -particleSize / 2.f + randomValueX;
+//		index++;
+//		particleVertices[index] = particleSize / 2.f + randomValueY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++;
+//		particleVertices[index] = randomValueVX;
+//		index++;
+//		particleVertices[index] = randomValueVY;
+//		index++;
+//		particleVertices[index] = 0.f;
+//		index++; //Velocity XYZ
+//	}
+//	glGenBuffers(1, &m_VBOManyParticle);
+//	glBindBuffer(GL_ARRAY_BUFFER, m_VBOManyParticle);
+//	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * floatCount, particleVertices, GL_STATIC_DRAW);
+//	m_VBOManyParticleVertexCount = vertexCount;
+//	delete[]particleVertices;
+//}

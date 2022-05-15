@@ -26,7 +26,7 @@ void RenderScene(void)
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// Renderer Test
-	g_Renderer->Test();
+	g_Renderer->Render();
 
 	glutSwapBuffers();
 }
@@ -78,11 +78,8 @@ int main(int argc, char **argv)
 	glutKeyboardFunc(KeyInput);
 	glutMouseFunc(MouseInput);
 	glutSpecialFunc(SpecialKeyInput);
-
 	glutMainLoop();
 
 	delete g_Renderer;
-
-    return 0;
 }
 

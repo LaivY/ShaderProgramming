@@ -15,40 +15,42 @@ class Renderer
 {
 public:
 	Renderer(int windowSizeX, int windowSizeY);
-	~Renderer();
+	~Renderer() = default;
 
 	GLuint CreatePngTexture(char * filePath);
 	GLuint CreateBmpTexture(char * filePath);
 	   
-	void Test();
+	void Render();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
+	void CreateVertexBufferObjects();
+
+	GLuint CompileShaders(char* filenameVS, char* filenameFS);
 	bool ReadFile(char* filename, std::string *target);
 	void AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType);
-	GLuint CompileShaders(char* filenameVS, char* filenameFS);
-	void CreateVertexBufferObjects(); 
-	unsigned char * Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWidth, unsigned int& outHeight);
 
-	bool m_Initialized = false;
-	
-	unsigned int m_WindowSizeX = 0;
-	unsigned int m_WindowSizeY = 0;
+	unsigned char* loadBMPRaw(const char* imagepath, unsigned int& outWidth, unsigned int& outHeight);
 
-	//camera position
-	glm::vec3 m_v3Camera_Position;
-	//camera lookat position
-	glm::vec3 m_v3Camera_Lookat;
-	//camera up vector
-	glm::vec3 m_v3Camera_Up;
+private:
+	bool			m_Initialized;
+	unsigned int	m_WindowSizeX;
+	unsigned int	m_WindowSizeY;
 
-	glm::mat4 m_m4OrthoProj;
-	glm::mat4 m_m4PersProj;
-	glm::mat4 m_m4Model;
-	glm::mat4 m_m4View;
-	glm::mat4 m_m4ProjView;
+	glm::vec3		m_v3Camera_Position;
+	glm::vec3		m_v3Camera_Lookat;
+	glm::vec3		m_v3Camera_Up;
 
-	GLuint m_VBORect = 0;
-	GLuint m_SolidRectShader = 0;
+	glm::mat4		m_m4OrthoProj;
+	glm::mat4		m_m4PersProj;
+	glm::mat4		m_m4Model;
+	glm::mat4		m_m4View;
+	glm::mat4		m_m4ProjView;
+
+	GLuint			m_VBORect;
+	GLuint			m_SolidRectShader;
+
+	GLuint			m_VBOLecture;
+	GLuint			m_testShader;
 };
 
