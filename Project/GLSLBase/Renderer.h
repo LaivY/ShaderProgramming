@@ -26,8 +26,8 @@ private:
 	void Initialize(int windowSizeX, int windowSizeY);
 	void CreateVertexBufferObjects();
 
-	GLuint CompileShaders(char* filenameVS, char* filenameFS);
-	bool ReadFile(char* filename, std::string *target);
+	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
+	bool ReadFile(const std::string& filename, std::string& target);
 	void AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType);
 
 	unsigned char* loadBMPRaw(const char* imagepath, unsigned int& outWidth, unsigned int& outHeight);

@@ -7,6 +7,9 @@ in float		a_lifeTime;	// 수명
 in float		a_amp;		// 진폭
 in float		a_freq;		// 주기
 in float		a_value;	// 랜덤값
+in vec4			a_color;	// 색깔
+
+out vec4		v_color;
 
 uniform float	u_time;		// 흐른시간
 uniform vec3	u_accel;	// 가속도
@@ -47,4 +50,6 @@ void main()
 	position += 0.1f * a_amp * rotVec * sin(a_freq * t * 2.0f * g_pi);
 
 	gl_Position = vec4(position, 1.0f);
+
+	v_color = a_color;
 }

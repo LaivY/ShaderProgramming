@@ -62,80 +62,59 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 	return temp;
 }
 
-float u_time = 0.0f;
 void Renderer::Render()
 {
-	constexpr GLsizei vertexSize{ sizeof(float) * 11 };
+	constexpr GLsizei vertexSize{ sizeof(float) * 15 };
+	static float u_time{ 0.0f };
 
 	GLuint shader{ m_testShader };
 	glUseProgram(shader);
 
-	// 위치
-	int attribPosition = glGetAttribLocation(shader, "a_position");
-	glEnableVertexAttribArray(attribPosition);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
+	// 정점 데이터 입력 레이아웃
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 },
+		{ "a_velocity", 3, 3 },
+		{ "a_emitTime", 1, 6 },
+		{ "a_lifeTime", 1, 7 },
+		{ "a_amp", 1, 8 },
+		{ "a_freq", 1, 9 },
+		{ "a_value", 1, 10 },
+		{ "a_color", 4, 11 },
+	};
 
-	// 속도
-	int attribVelocity = glGetAttribLocation(shader, "a_velocity");
-	glEnableVertexAttribArray(attribVelocity);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribVelocity, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 3));
+	// 정점 데이터 셰이더로 넘김
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
 
-	// 생성 시각
-	int attribEmitTime = glGetAttribLocation(shader, "a_emitTime");
-	glEnableVertexAttribArray(attribEmitTime);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribEmitTime, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 6));
+	// 유니폼 데이터 셰이더로 넘김
+	{
+		// 시간
+		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+		glUniform1f(uniformLocTime, u_time);
 
-	// 수명
-	int attribLifeTime = glGetAttribLocation(shader, "a_lifeTime");
-	glEnableVertexAttribArray(attribLifeTime);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribLifeTime, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 7));
-
-	// 진폭
-	int attribAmp = glGetAttribLocation(shader, "a_amp");
-	glEnableVertexAttribArray(attribAmp);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribAmp, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 8));
-
-	// 주기
-	int attribFreq = glGetAttribLocation(shader, "a_freq");
-	glEnableVertexAttribArray(attribFreq);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribFreq, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 9));
-
-	// 랜덤값
-	int attribValue = glGetAttribLocation(shader, "a_value");
-	glEnableVertexAttribArray(attribValue);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribValue, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 10));
-
-	// 시간
-	int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
-	glUniform1f(uniformLocTime, u_time);
-
-	// 가속도
-	int uniformLocAccel{ glGetUniformLocation(shader, "u_accel") };
-	glUniform3f(uniformLocAccel, 0.0f, 0.0f, 0.0f);
+		// 가속도
+		int uniformLocAccel{ glGetUniformLocation(shader, "u_accel") };
+		glUniform3f(uniformLocAccel, 0.0f, 0.0f, 0.0f);
+	}
 
 	// 렌더링
 	glDrawArrays(GL_TRIANGLES, 0, m_particleVertexCount);
 
 	// 비활성화
-	glDisableVertexAttribArray(attribPosition);
-	glDisableVertexAttribArray(attribVelocity);
-	glDisableVertexAttribArray(attribEmitTime);
-	glDisableVertexAttribArray(attribLifeTime);
-	glDisableVertexAttribArray(attribAmp);
-	glDisableVertexAttribArray(attribFreq);
-	glDisableVertexAttribArray(attribValue);
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
 
 	// 시간 증가
 	u_time += 0.01f;
-	//if (u_time > 10.0f)
-	//	u_time = 0.0f;
 }
 
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
@@ -213,7 +192,7 @@ void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum S
 	glAttachShader(ShaderProgram, ShaderObj);
 }
 
-bool Renderer::ReadFile(char* filename, std::string *target)
+bool Renderer::ReadFile(const std::string& filename, std::string& target)
 {
 	std::ifstream file(filename);
 	if (file.fail())
@@ -224,13 +203,13 @@ bool Renderer::ReadFile(char* filename, std::string *target)
 	}
 	std::string line;
 	while (getline(file, line)) {
-		target->append(line.c_str());
-		target->append("\n");
+		target.append(line.c_str());
+		target.append("\n");
 	}
 	return true;
 }
 
-GLuint Renderer::CompileShaders(char* filenameVS, char* filenameFS)
+GLuint Renderer::CompileShaders(const std::string& filenameVS, const std::string& filenameFS)
 {
 	GLuint ShaderProgram = glCreateProgram(); //빈 쉐이더 프로그램 생성
 
@@ -241,13 +220,13 @@ GLuint Renderer::CompileShaders(char* filenameVS, char* filenameFS)
 	std::string vs, fs;
 
 	//shader.vs 가 vs 안으로 로딩됨
-	if (!ReadFile(filenameVS, &vs)) {
+	if (!ReadFile(filenameVS, vs)) {
 		printf("Error compiling vertex shader\n");
 		return -1;
 	};
 
 	//shader.fs 가 fs 안으로 로딩됨
-	if (!ReadFile(filenameFS, &fs)) {
+	if (!ReadFile(filenameFS, fs)) {
 		printf("Error compiling fragment shader\n");
 		return -1;
 	};
@@ -361,8 +340,8 @@ void Renderer::CreateParticle(int particleCount)
 	constexpr float particleSize = 0.01f;
 
 	// 정점의 데이터 개수
-	// (위치(3), 속도(3), 생성 시각(1), 수명(1), 진폭(1), 주기(1), 랜덤값(1)
-	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 + 1 + 1 + 1 };
+	// (위치(3), 속도(3), 생성 시각(1), 수명(1), 진폭(1), 주기(1), 랜덤값(1), 색깔(4)
+	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 + 1 + 1 + 1 + 4 };
 
 	// 총 float 개수
 	// 정점 데이터 개수 * 삼각형을 이루는 정점의 개수 * 삼각형 개수 * 파티클 개수
@@ -383,6 +362,10 @@ void Renderer::CreateParticle(int particleCount)
 		float randomAmp			= ((float)rand() / (float)RAND_MAX) * 0.2f - 0.1f;
 		float randomFreq		= ((float)rand() / (float)RAND_MAX) * 2.0f;
 		float randomValue		= ((float)rand() / (float)RAND_MAX) * 1.0f;
+		float color[4]			= { (float)rand() / (float)RAND_MAX * 1.0f,
+									(float)rand() / (float)RAND_MAX * 1.0f,
+									(float)rand() / (float)RAND_MAX * 1.0f,
+									1.0f };
 
 		for (int j = 0; j <= 5; ++j)
 		{
@@ -429,6 +412,11 @@ void Renderer::CreateParticle(int particleCount)
 			particleVertices[index++] = randomFreq;
 
 			particleVertices[index++] = randomValue;
+
+			particleVertices[index++] = color[0];
+			particleVertices[index++] = color[1];
+			particleVertices[index++] = color[2];
+			particleVertices[index++] = color[3];
 		}
 	}
 	glGenBuffers(1, &m_vbo);
