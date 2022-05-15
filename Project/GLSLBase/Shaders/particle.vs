@@ -29,9 +29,13 @@ void main()
 	if (t < 0)
 	{
 		gl_Position = vec4(-99.0f, -99.0f, -99.0f, 1.0f);
+		v_color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 		return;
 	}
-	t = fract(t / a_lifeTime) * a_lifeTime;
+
+	// 소수부
+	float fractional = fract(t / a_lifeTime);
+	t = fractional * a_lifeTime;
 
 	// 가속도
 	vec3 accel = u_accel + g_gravity;
@@ -51,5 +55,5 @@ void main()
 
 	gl_Position = vec4(position, 1.0f);
 
-	v_color = a_color;
+	v_color = a_color * (1.0f - fractional);
 }

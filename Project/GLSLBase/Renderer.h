@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 
 #include "Dependencies\glew.h"
 #include "Dependencies\wglew.h"
@@ -21,18 +22,20 @@ public:
 	GLuint CreateBmpTexture(char * filePath);
 	   
 	void Render();
+	void RenderParticle();
+	void RenderFullScreenQuad();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
 	void CreateVertexBufferObjects();
+	void CreateParticle(int count);
+	void CreateFullScreenQuad();
 
 	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
 	bool ReadFile(const std::string& filename, std::string& target);
 	void AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType);
 
 	unsigned char* loadBMPRaw(const char* imagepath, unsigned int& outWidth, unsigned int& outHeight);
-
-	void CreateParticle(int count);
 
 private:
 	bool			m_Initialized;
@@ -49,11 +52,7 @@ private:
 	glm::mat4		m_m4View;
 	glm::mat4		m_m4ProjView;
 
-	GLuint			m_VBORect;
-	GLuint			m_SolidRectShader;
-
-	GLuint			m_vbo;
-	GLuint			m_testShader;
-	GLuint			m_particleVertexCount;
+	std::unordered_map<std::string, GLuint> m_shaders;
+	std::unordered_map<std::string, GLuint> m_vbos;
+	std::unordered_map<std::string, GLuint> m_vertexCounts;
 };
-

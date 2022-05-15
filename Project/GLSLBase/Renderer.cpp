@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <cassert>
 
-Renderer::Renderer(int windowSizeX, int windowSizeY) : m_Initialized{ false }, m_WindowSizeX{ 0 }, m_WindowSizeY{ 0 }, m_VBORect{ 0 }, m_SolidRectShader{ 0 }
+Renderer::Renderer(int windowSizeX, int windowSizeY) : m_Initialized{ false }, m_WindowSizeX{ 0 }, m_WindowSizeY{ 0 }
 {
 	//default settings
 	glClearDepth(1.f);
@@ -64,10 +64,15 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 
 void Renderer::Render()
 {
+	RenderParticle();
+}
+
+void Renderer::RenderParticle()
+{
 	constexpr GLsizei vertexSize{ sizeof(float) * 15 };
 	static float u_time{ 0.0f };
 
-	GLuint shader{ m_testShader };
+	GLuint shader{ m_shaders["PARTICLE"] };
 	glUseProgram(shader);
 
 	// 정점 데이터 입력 레이아웃
@@ -88,7 +93,7 @@ void Renderer::Render()
 	{
 		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
 		glEnableVertexAttribArray(attribLocation);
-		glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, m_vbos["PARTICLE"]);
 		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
 	}
 
@@ -104,7 +109,7 @@ void Renderer::Render()
 	}
 
 	// 렌더링
-	glDrawArrays(GL_TRIANGLES, 0, m_particleVertexCount);
+	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["PARTICLE"]);
 
 	// 비활성화
 	for (const auto& [name, _, __] : vertexInputLayout)
@@ -117,6 +122,42 @@ void Renderer::Render()
 	u_time += 0.01f;
 }
 
+void Renderer::RenderFullScreenQuad()
+{
+	constexpr GLsizei vertexSize{ sizeof(float) * 7 };
+
+	GLuint shader{ m_shaders["FULLQUAD"] };
+	glUseProgram(shader);
+
+	// VBO 바인딩
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
+
+	// 정점 데이터 입력 레이아웃
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 },
+		{ "a_color", 4, 3 },
+	};
+
+	// 정점 데이터 셰이더로 넘김
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	// 드로우콜
+	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["FULLQUAD"]);
+
+	// 비활성화
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+}
+
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
 {
 	//Set window size
@@ -124,10 +165,10 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_WindowSizeY = windowSizeY;
 
 	//Load shaders
-	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
-	m_testShader = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
+	m_shaders["PARTICLE"] = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
+	m_shaders["FULLQUAD"] = CompileShaders("./Shaders/sandbox.vs", "./Shaders/sandbox.fs");
 
-	//Create VBOs
+	// Create VBOs
 	CreateVertexBufferObjects();
 
 	//Initialize camera settings
@@ -158,6 +199,121 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 void Renderer::CreateVertexBufferObjects()
 {
 	CreateParticle(1000);
+	CreateFullScreenQuad();
+}
+
+void Renderer::CreateParticle(int particleCount)
+{
+	// 파티클 크기
+	constexpr float particleSize = 0.1f;
+
+	// 정점의 데이터 개수
+	// (위치(3), 속도(3), 생성 시각(1), 수명(1), 진폭(1), 주기(1), 랜덤값(1), 색깔(4)
+	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 + 1 + 1 + 1 + 4 };
+
+	// 총 float 개수
+	// 정점 데이터 개수 * 삼각형을 이루는 정점의 개수 * 삼각형 개수 * 파티클 개수
+	int floatCount{ (vertexDataCount * 3 * 2) * particleCount };
+	float* vertices{ new float[floatCount] };
+
+	int index = 0;
+	for (int i = 0; i < particleCount; i++)
+	{
+		float randomValueX = 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+		float randomValueY = 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+		float randomValueZ = 0.0f;
+		float randomValueVX = ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
+		float randomValueVY = ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
+		float randomValueVZ = 0.0f;
+		float randomEmitTime = ((float)rand() / (float)RAND_MAX) * 5.0f;
+		float randomLifeTime = ((float)rand() / (float)RAND_MAX) * 2.0f;
+		float randomAmp = ((float)rand() / (float)RAND_MAX) * 0.2f - 0.1f;
+		float randomFreq = ((float)rand() / (float)RAND_MAX) * 2.0f;
+		float randomValue = ((float)rand() / (float)RAND_MAX) * 1.0f;
+		float color[4] = { (float)rand() / (float)RAND_MAX * 1.0f,
+									(float)rand() / (float)RAND_MAX * 1.0f,
+									(float)rand() / (float)RAND_MAX * 1.0f,
+									1.0f };
+
+		for (int j = 0; j <= 5; ++j)
+		{
+			if (j == 0)
+			{
+				vertices[index++] = -particleSize / 2.f + randomValueX;
+				vertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 1)
+			{
+				vertices[index++] = particleSize / 2.f + randomValueX;
+				vertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 2)
+			{
+				vertices[index++] = particleSize / 2.f + randomValueX;
+				vertices[index++] = particleSize / 2.f + randomValueY;
+			}
+			else if (j == 3)
+			{
+				vertices[index++] = -particleSize / 2.f + randomValueX;
+				vertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 4)
+			{
+				vertices[index++] = particleSize / 2.f + randomValueX;
+				vertices[index++] = particleSize / 2.f + randomValueY;
+			}
+			else if (j == 5)
+			{
+				vertices[index++] = -particleSize / 2.f + randomValueX;
+				vertices[index++] = particleSize / 2.f + randomValueY;
+			}
+			vertices[index++] = 0.0f;
+
+			vertices[index++] = randomValueVX;
+			vertices[index++] = randomValueVY;
+			vertices[index++] = 0.0f;
+
+			vertices[index++] = randomEmitTime;
+			vertices[index++] = randomLifeTime;
+
+			vertices[index++] = randomAmp;
+			vertices[index++] = randomFreq;
+
+			vertices[index++] = randomValue;
+
+			vertices[index++] = color[0];
+			vertices[index++] = color[1];
+			vertices[index++] = color[2];
+			vertices[index++] = color[3];
+		}
+	}
+	glGenBuffers(1, &m_vbos["PARTICLE"]);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["PARTICLE"]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * floatCount, vertices, GL_STATIC_DRAW);
+
+	// 총 파티클들의 정점 개수
+	m_vertexCounts["PARTICLE"] = particleCount * 3 * 2;
+
+	delete[] vertices;
+}
+
+void Renderer::CreateFullScreenQuad()
+{
+	// 위치(3), 색깔(4)
+	constexpr float vertices[]
+	{
+		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+
+		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+	};
+	glGenBuffers(1, &m_vbos["FULLQUAD"]);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	m_vertexCounts["FULLQUAD"] = _countof(vertices);
 }
 
 void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
@@ -332,99 +488,4 @@ unsigned char* Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWid
 	std::cout << imagepath << " is succesfully loaded. " << std::endl;
 
 	return data;
-}
-
-void Renderer::CreateParticle(int particleCount)
-{
-	// 파티클 크기
-	constexpr float particleSize = 0.01f;
-
-	// 정점의 데이터 개수
-	// (위치(3), 속도(3), 생성 시각(1), 수명(1), 진폭(1), 주기(1), 랜덤값(1), 색깔(4)
-	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 + 1 + 1 + 1 + 4 };
-
-	// 총 float 개수
-	// 정점 데이터 개수 * 삼각형을 이루는 정점의 개수 * 삼각형 개수 * 파티클 개수
-	int floatCount{ (vertexDataCount * 3 * 2) * particleCount };
-	float* particleVertices{ new float[floatCount] };
-
-	int index = 0;
-	for (int i = 0; i < particleCount; i++)
-	{
-		float randomValueX		= 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		float randomValueY		= 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		float randomValueZ		= 0.0f;
-		float randomValueVX		= ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
-		float randomValueVY		= ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
-		float randomValueVZ		= 0.0f;
-		float randomEmitTime	= ((float)rand() / (float)RAND_MAX) * 5.0f;
-		float randomLifeTime	= ((float)rand() / (float)RAND_MAX) * 2.0f;
-		float randomAmp			= ((float)rand() / (float)RAND_MAX) * 0.2f - 0.1f;
-		float randomFreq		= ((float)rand() / (float)RAND_MAX) * 2.0f;
-		float randomValue		= ((float)rand() / (float)RAND_MAX) * 1.0f;
-		float color[4]			= { (float)rand() / (float)RAND_MAX * 1.0f,
-									(float)rand() / (float)RAND_MAX * 1.0f,
-									(float)rand() / (float)RAND_MAX * 1.0f,
-									1.0f };
-
-		for (int j = 0; j <= 5; ++j)
-		{
-			if (j == 0)
-			{
-				particleVertices[index++] = -particleSize / 2.f + randomValueX;
-				particleVertices[index++] = -particleSize / 2.f + randomValueY;
-			}
-			else if (j == 1)
-			{
-				particleVertices[index++] =  particleSize / 2.f + randomValueX;
-				particleVertices[index++] = -particleSize / 2.f + randomValueY;
-			}
-			else if (j == 2)
-			{
-				particleVertices[index++] = particleSize / 2.f + randomValueX;
-				particleVertices[index++] = particleSize / 2.f + randomValueY;
-			}
-			else if (j == 3)
-			{
-				particleVertices[index++] = -particleSize / 2.f + randomValueX;
-				particleVertices[index++] = -particleSize / 2.f + randomValueY;
-			}
-			else if (j == 4)
-			{
-				particleVertices[index++] =  particleSize / 2.f + randomValueX;
-				particleVertices[index++] = -particleSize / 2.f + randomValueY;
-			}
-			else if (j == 5)
-			{
-				particleVertices[index++] = -particleSize / 2.f + randomValueX;
-				particleVertices[index++] =  particleSize / 2.f + randomValueY;
-			}
-			particleVertices[index++] = 0.0f;
-
-			particleVertices[index++] = randomValueVX;
-			particleVertices[index++] = randomValueVY;
-			particleVertices[index++] = 0.0f;
-
-			particleVertices[index++] = randomEmitTime;
-			particleVertices[index++] = randomLifeTime;
-
-			particleVertices[index++] = randomAmp;
-			particleVertices[index++] = randomFreq;
-
-			particleVertices[index++] = randomValue;
-
-			particleVertices[index++] = color[0];
-			particleVertices[index++] = color[1];
-			particleVertices[index++] = color[2];
-			particleVertices[index++] = color[3];
-		}
-	}
-	glGenBuffers(1, &m_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * floatCount, particleVertices, GL_STATIC_DRAW);
-
-	// 총 파티클들의 정점 개수
-	m_particleVertexCount = particleCount * 3 * 2;
-
-	delete[] particleVertices;
 }
