@@ -1,14 +1,24 @@
-#version 450
+﻿#version 450
 
-in vec3			a_position;	// ��ġ
-in vec3			a_velocity;	// �ӵ�
-in float		a_emitTime;	// ������ �ð�
-in float		a_lifeTime;	// ����
+in vec3			a_position;	// 위치
+in vec3			a_velocity;	// 속도
+in float		a_emitTime;	// 생성될 시각
+in float		a_lifeTime;	// 수명
+in float		a_amp;		// 진폭
+in float		a_freq;		// 주기
+in float		a_value;	// 랜덤값
 
-uniform float	u_time;		// �帥�ð�
-uniform vec3	u_accel;	// ���ӵ�
+uniform float	u_time;		// 흐른시간
+uniform vec3	u_accel;	// 가속도
 
-float g_pi = 3.14f;
+const float g_pi = 3.14f;
+const mat3x3 g_rotate = mat3x3
+(
+	0.0f, -1.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f
+);
+const vec3 g_gravity = vec3(0.0f, -0.5f, 0.0f);
 
 void main()
 {
@@ -20,9 +30,21 @@ void main()
 	}
 	t = fract(t / a_lifeTime) * a_lifeTime;
 
-	vec3 position;
-	position.x = a_position.x + (a_velocity.x * t) + (0.5f * u_accel.x * pow(t, 2));
-	position.y = a_position.y + 0.5f * sin(t * 2.0f * g_pi);
-	position.z = 0.0f;
+	// 가속도
+	vec3 accel = u_accel + g_gravity;
+
+	// 시작 좌표가 원 위가 되도록 설정
+	vec3 position = a_position;
+	position.x += sin(a_value * 2.0f * g_pi);
+	position.y += cos(a_value * 2.0f * g_pi);
+	position.z += 0.0f;
+
+	// 현재 위치에 속도를 더함
+	position += (a_velocity * t) + (accel * pow(t, 2));
+
+	// 속도에 수직인 벡터를 축으로 sin곡선을 만들도록 함
+	vec3 rotVec = normalize(a_velocity * g_rotate);
+	position += 0.1f * a_amp * rotVec * sin(a_freq * t * 2.0f * g_pi);
+
 	gl_Position = vec4(position, 1.0f);
 }

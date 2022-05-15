@@ -65,6 +65,8 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 float u_time = 0.0f;
 void Renderer::Render()
 {
+	constexpr GLsizei vertexSize{ sizeof(float) * 11 };
+
 	GLuint shader{ m_testShader };
 	glUseProgram(shader);
 
@@ -72,25 +74,43 @@ void Renderer::Render()
 	int attribPosition = glGetAttribLocation(shader, "a_position");
 	glEnableVertexAttribArray(attribPosition);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0);
+	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
 
 	// 속도
 	int attribVelocity = glGetAttribLocation(shader, "a_velocity");
 	glEnableVertexAttribArray(attribVelocity);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribVelocity, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, reinterpret_cast<void*>(sizeof(float) * 3));
+	glVertexAttribPointer(attribVelocity, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 3));
 
 	// 생성 시각
 	int attribEmitTime = glGetAttribLocation(shader, "a_emitTime");
 	glEnableVertexAttribArray(attribEmitTime);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribEmitTime, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 8, reinterpret_cast<void*>(sizeof(float) * 6));
+	glVertexAttribPointer(attribEmitTime, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 6));
 
 	// 수명
 	int attribLifeTime = glGetAttribLocation(shader, "a_lifeTime");
 	glEnableVertexAttribArray(attribLifeTime);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glVertexAttribPointer(attribLifeTime, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 8, reinterpret_cast<void*>(sizeof(float) * 7));
+	glVertexAttribPointer(attribLifeTime, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 7));
+
+	// 진폭
+	int attribAmp = glGetAttribLocation(shader, "a_amp");
+	glEnableVertexAttribArray(attribAmp);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glVertexAttribPointer(attribAmp, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 8));
+
+	// 주기
+	int attribFreq = glGetAttribLocation(shader, "a_freq");
+	glEnableVertexAttribArray(attribFreq);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glVertexAttribPointer(attribFreq, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 9));
+
+	// 랜덤값
+	int attribValue = glGetAttribLocation(shader, "a_value");
+	glEnableVertexAttribArray(attribValue);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glVertexAttribPointer(attribValue, 1, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * 10));
 
 	// 시간
 	int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
@@ -106,6 +126,11 @@ void Renderer::Render()
 	// 비활성화
 	glDisableVertexAttribArray(attribPosition);
 	glDisableVertexAttribArray(attribVelocity);
+	glDisableVertexAttribArray(attribEmitTime);
+	glDisableVertexAttribArray(attribLifeTime);
+	glDisableVertexAttribArray(attribAmp);
+	glDisableVertexAttribArray(attribFreq);
+	glDisableVertexAttribArray(attribValue);
 
 	// 시간 증가
 	u_time += 0.01f;
@@ -336,8 +361,8 @@ void Renderer::CreateParticle(int particleCount)
 	constexpr float particleSize = 0.01f;
 
 	// 정점의 데이터 개수
-	// 위치(3) + 속도(3) + 생성 시각(1) + 수명(1)
-	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 };
+	// (위치(3), 속도(3), 생성 시각(1), 수명(1), 진폭(1), 주기(1), 랜덤값(1)
+	constexpr int vertexDataCount{ 3 + 3 + 1 + 1 + 1 + 1 + 1 };
 
 	// 총 float 개수
 	// 정점 데이터 개수 * 삼각형을 이루는 정점의 개수 * 삼각형 개수 * 파티클 개수
@@ -347,95 +372,64 @@ void Renderer::CreateParticle(int particleCount)
 	int index = 0;
 	for (int i = 0; i < particleCount; i++)
 	{
-		float randomValueX = 0.f;
-		float randomValueY = 0.f;
-		float randomValueZ = 0.f;
-		float randomValueVX = 0.f;
-		float randomValueVY = 0.f;
-		float randomValueVZ = 0.f;
-		float randomEmitTime = 0.0f;
-		float randomLifeTime = 0.0f;
+		float randomValueX		= 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+		float randomValueY		= 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
+		float randomValueZ		= 0.0f;
+		float randomValueVX		= ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
+		float randomValueVY		= ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
+		float randomValueVZ		= 0.0f;
+		float randomEmitTime	= ((float)rand() / (float)RAND_MAX) * 5.0f;
+		float randomLifeTime	= ((float)rand() / (float)RAND_MAX) * 2.0f;
+		float randomAmp			= ((float)rand() / (float)RAND_MAX) * 0.2f - 0.1f;
+		float randomFreq		= ((float)rand() / (float)RAND_MAX) * 2.0f;
+		float randomValue		= ((float)rand() / (float)RAND_MAX) * 1.0f;
 
-		randomValueX = 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		randomValueY = 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		randomValueZ = 0.0f;
-		randomValueVX = 1.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		randomValueVY = 0.0f;// ((float)rand() / (float)RAND_MAX - 0.5f) * 2.f; //-1~1
-		randomValueVZ = 0.0f;
-		randomEmitTime = ((float)rand() / (float)RAND_MAX) * 5.0f;
-		randomLifeTime = 1.0f;// ((float)rand() / (float)RAND_MAX) * 2.0f;
+		for (int j = 0; j <= 5; ++j)
+		{
+			if (j == 0)
+			{
+				particleVertices[index++] = -particleSize / 2.f + randomValueX;
+				particleVertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 1)
+			{
+				particleVertices[index++] =  particleSize / 2.f + randomValueX;
+				particleVertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 2)
+			{
+				particleVertices[index++] = particleSize / 2.f + randomValueX;
+				particleVertices[index++] = particleSize / 2.f + randomValueY;
+			}
+			else if (j == 3)
+			{
+				particleVertices[index++] = -particleSize / 2.f + randomValueX;
+				particleVertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 4)
+			{
+				particleVertices[index++] =  particleSize / 2.f + randomValueX;
+				particleVertices[index++] = -particleSize / 2.f + randomValueY;
+			}
+			else if (j == 5)
+			{
+				particleVertices[index++] = -particleSize / 2.f + randomValueX;
+				particleVertices[index++] =  particleSize / 2.f + randomValueY;
+			}
+			particleVertices[index++] = 0.0f;
 
-		// v0 (위치(3), 속도(3), 생성 시각(1), 수명(1)
-		particleVertices[index++] = -particleSize / 2.f + randomValueX;
-		particleVertices[index++] = -particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.0f;
+			particleVertices[index++] = randomValueVX;
+			particleVertices[index++] = randomValueVY;
+			particleVertices[index++] = 0.0f;
 
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.0f;
-		 
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
+			particleVertices[index++] = randomEmitTime;
+			particleVertices[index++] = randomLifeTime;
 
-		// v1
-		particleVertices[index++] =  particleSize / 2.f + randomValueX;
-		particleVertices[index++] = -particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.f;
+			particleVertices[index++] = randomAmp;
+			particleVertices[index++] = randomFreq;
 
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
-
-		// v2
-		particleVertices[index++] = particleSize / 2.f + randomValueX;
-		particleVertices[index++] = particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
-
-		// v3
-		particleVertices[index++] = -particleSize / 2.f + randomValueX;
-		particleVertices[index++] = -particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
-
-		// v4
-		particleVertices[index++] =  particleSize / 2.f + randomValueX;
-		particleVertices[index++] = -particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
-
-		// v5
-		particleVertices[index++] = -particleSize / 2.f + randomValueX;
-		particleVertices[index++] =  particleSize / 2.f + randomValueY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomValueVX;
-		particleVertices[index++] = randomValueVY;
-		particleVertices[index++] = 0.f;
-
-		particleVertices[index++] = randomEmitTime;
-		particleVertices[index++] = randomLifeTime;
+			particleVertices[index++] = randomValue;
+		}
 	}
 	glGenBuffers(1, &m_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
