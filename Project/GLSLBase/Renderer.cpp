@@ -64,7 +64,8 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 
 void Renderer::Render()
 {
-	RenderParticle();
+	//RenderParticle();
+	RenderFullScreenQuad();
 }
 
 void Renderer::RenderParticle()
@@ -74,6 +75,10 @@ void Renderer::RenderParticle()
 
 	GLuint shader{ m_shaders["PARTICLE"] };
 	glUseProgram(shader);
+
+	// 알파블렌딩
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// 정점 데이터 입력 레이아웃
 	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
@@ -120,6 +125,9 @@ void Renderer::RenderParticle()
 
 	// 시간 증가
 	u_time += 0.01f;
+
+	// 알파블렌딩 비활성화
+	glDisable(GL_BLEND);
 }
 
 void Renderer::RenderFullScreenQuad()

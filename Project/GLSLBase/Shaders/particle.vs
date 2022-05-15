@@ -10,6 +10,7 @@ in float		a_value;	// 랜덤값
 in vec4			a_color;	// 색깔
 
 out vec4		v_color;
+out vec2		v_uv;
 
 uniform float	u_time;		// 흐른시간
 uniform vec3	u_accel;	// 가속도
@@ -56,4 +57,5 @@ void main()
 	gl_Position = vec4(position, 1.0f);
 
 	v_color = a_color * (1.0f - fractional);
+	v_uv = a_position.xy;
 }
