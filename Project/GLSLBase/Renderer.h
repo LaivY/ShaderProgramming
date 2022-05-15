@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <cstdlib>
@@ -32,6 +32,8 @@ private:
 
 	unsigned char* loadBMPRaw(const char* imagepath, unsigned int& outWidth, unsigned int& outHeight);
 
+	void CreateParticle(int count);
+
 private:
 	bool			m_Initialized;
 	unsigned int	m_WindowSizeX;
@@ -50,7 +52,8 @@ private:
 	GLuint			m_VBORect;
 	GLuint			m_SolidRectShader;
 
-	GLuint			m_VBOLecture;
+	GLuint			m_vbo;
 	GLuint			m_testShader;
+	GLuint			m_particleVertexCount;
 };
 
