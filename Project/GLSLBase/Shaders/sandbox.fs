@@ -5,6 +5,7 @@ layout(location=0) out vec4 FragColor;
 in vec4 v_color;
 
 uniform vec3 u_points[10];
+uniform float u_lifeTimes[10];
 uniform float u_time;
 
 const float PI = 3.141592f;
@@ -52,8 +53,10 @@ vec4 DrawCirclesAtPoints()
 	for (int i = 0; i < 10; ++i)
 	{
 		float dist = distance(u_points[i].xy, v_color.xy);
-		float value = sin(10.0f * dist * 4.0f * PI - u_time);
-		if (dist < u_time / 10.0f)
+		float temp = 10.0f * dist * 4.0f * PI - u_time;
+		float value = sin(temp);
+
+		if ((u_time - u_lifeTimes[i]) / 10.0f < dist && dist < u_time / 10.0f)
 			result += vec4(value);
 	}
 	return result;
@@ -81,5 +84,5 @@ vec4 RadarCircle()
 
 void main()
 {
-	FragColor = RadarCircle();
+	FragColor = DrawCirclesAtPoints();
 }

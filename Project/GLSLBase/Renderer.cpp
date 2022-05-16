@@ -209,7 +209,7 @@ void Renderer::RenderRadarCircle()
 	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
 	{
 		{ "a_position", 3, 0 },
-		{ "a_color", 4, 3 },
+		{ "a_color", 4, 3 }
 	};
 
 	// 정점 데이터 셰이더로 넘김
@@ -236,10 +236,27 @@ void Renderer::RenderRadarCircle()
 			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
 			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f
 		};
-
 		int uniformLocPoints{ glGetUniformLocation(shader, "u_points") };
 		glUniform3fv(uniformLocPoints, _countof(points), points);
 
+		// 수명
+		static float lifeTimes[]
+		{
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f
+		};
+		int uniformLocLifetimes{ glGetUniformLocation(shader, "u_lifeTimes") };
+		glUniform1fv(uniformLocLifetimes, _countof(lifeTimes), lifeTimes);
+
+		// 시간
 		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
 		glUniform1f(uniformLocTime, u_time);
 	}
@@ -254,7 +271,7 @@ void Renderer::RenderRadarCircle()
 		glDisableVertexAttribArray(attribLocation);
 	}
 
-	u_time += 0.01f;
+	u_time += 0.005f;
 }
 
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
@@ -297,7 +314,7 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 
 void Renderer::CreateVertexBufferObjects()
 {
-	CreateParticle(1000);
+	//CreateParticle(1000);
 	CreateFullScreenQuad();
 }
 
