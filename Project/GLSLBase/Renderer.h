@@ -24,6 +24,7 @@ public:
 	void Render();
 	void RenderParticle();
 	void RenderFullScreenQuad();
+	void RenderRadarCircle();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);

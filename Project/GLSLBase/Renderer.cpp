@@ -65,7 +65,8 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 void Renderer::Render()
 {
 	//RenderParticle();
-	RenderFullScreenQuad();
+	//RenderFullScreenQuad();
+	RenderRadarCircle();
 }
 
 void Renderer::RenderParticle()
@@ -132,6 +133,7 @@ void Renderer::RenderParticle()
 
 void Renderer::RenderFullScreenQuad()
 {
+	static float u_time{ 0.0f };
 	constexpr GLsizei vertexSize{ sizeof(float) * 7 };
 
 	GLuint shader{ m_shaders["FULLQUAD"] };
@@ -155,6 +157,30 @@ void Renderer::RenderFullScreenQuad()
 		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
 	}
 
+	// 유니폼 변수들 셰이더로 넘김
+	{
+		// 원 위치
+		static float points[]
+		{
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f
+		};
+
+		int uniformLocPoints{ glGetUniformLocation(shader, "u_points") };
+		glUniform3fv(uniformLocPoints, _countof(points), points);
+
+		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+		glUniform1f(uniformLocTime, u_time);
+	}
+
 	// 드로우콜
 	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["FULLQUAD"]);
 
@@ -164,6 +190,71 @@ void Renderer::RenderFullScreenQuad()
 		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
 		glDisableVertexAttribArray(attribLocation);
 	}
+
+	u_time += 0.01f;
+}
+
+void Renderer::RenderRadarCircle()
+{
+	static float u_time{ 0.0f };
+	constexpr GLsizei vertexSize{ sizeof(float) * 7 };
+
+	GLuint shader{ m_shaders["FULLQUAD"] };
+	glUseProgram(shader);
+
+	// VBO 바인딩
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
+
+	// 정점 데이터 입력 레이아웃
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 },
+		{ "a_color", 4, 3 },
+	};
+
+	// 정점 데이터 셰이더로 넘김
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	// 유니폼 변수들 셰이더로 넘김
+	{
+		// 원 위치
+		static float points[]
+		{
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f
+		};
+
+		int uniformLocPoints{ glGetUniformLocation(shader, "u_points") };
+		glUniform3fv(uniformLocPoints, _countof(points), points);
+
+		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+		glUniform1f(uniformLocTime, u_time);
+	}
+
+	// 드로우콜
+	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["FULLQUAD"]);
+
+	// 비활성화
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+
+	u_time += 0.01f;
 }
 
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
@@ -239,9 +330,9 @@ void Renderer::CreateParticle(int particleCount)
 		float randomFreq = ((float)rand() / (float)RAND_MAX) * 2.0f;
 		float randomValue = ((float)rand() / (float)RAND_MAX) * 1.0f;
 		float color[4] = { (float)rand() / (float)RAND_MAX * 1.0f,
-									(float)rand() / (float)RAND_MAX * 1.0f,
-									(float)rand() / (float)RAND_MAX * 1.0f,
-									1.0f };
+						   (float)rand() / (float)RAND_MAX * 1.0f,
+						   (float)rand() / (float)RAND_MAX * 1.0f,
+						   1.0f };
 
 		for (int j = 0; j <= 5; ++j)
 		{
