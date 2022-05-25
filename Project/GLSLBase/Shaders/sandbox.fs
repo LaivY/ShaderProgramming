@@ -84,7 +84,17 @@ vec4 RadarCircle()
 	return result;
 }
 
+vec4 DrawSin()
+{
+	vec2 position = v_color.xy;
+
+	float sinValue = 0.25f * sin(position.x * 2.0f * PI + u_time) + 0.5f;
+	if (sinValue > position.y && sinValue - 0.01f < position.y)
+		return vec4(1.0f);
+	return vec4(0.0f);
+}
+
 void main()
 {
-	FragColor = RadarCircle();
+	FragColor = DrawSin();
 }

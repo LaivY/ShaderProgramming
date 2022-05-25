@@ -65,9 +65,9 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 void Renderer::Render()
 {
 	//RenderParticle();
-	//RenderFullScreenQuad();
+	RenderFullScreenQuad();
 	//RenderRadarCircle();
-	RenderLine();
+	//RenderLine();
 }
 
 void Renderer::RenderParticle()
@@ -355,8 +355,8 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 void Renderer::CreateVertexBufferObjects()
 {
 	//CreateParticle(1000);
-	//CreateFullScreenQuad();
-	CreateLinePoints(2000);
+	CreateFullScreenQuad();
+	//CreateLinePoints(2000);
 }
 
 void Renderer::CreateParticle(int particleCount)
@@ -459,13 +459,13 @@ void Renderer::CreateFullScreenQuad()
 	// 위치(3), 색깔(4)
 	constexpr float vertices[]
 	{
-		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		 0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 
-		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		 0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 	};
 	glGenBuffers(1, &m_vbos["FULLQUAD"]);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
