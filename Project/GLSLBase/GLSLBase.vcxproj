@@ -171,6 +171,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\line.fs" />
+    <None Include="Shaders\line.vs" />
     <None Include="Shaders\sandbox.fs" />
     <None Include="Shaders\sandbox.vs" />
     <None Include="Shaders\SolidRect.fs" />

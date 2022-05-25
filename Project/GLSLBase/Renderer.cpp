@@ -66,7 +66,8 @@ void Renderer::Render()
 {
 	//RenderParticle();
 	//RenderFullScreenQuad();
-	RenderRadarCircle();
+	//RenderRadarCircle();
+	RenderLine();
 }
 
 void Renderer::RenderParticle()
@@ -234,7 +235,7 @@ void Renderer::RenderRadarCircle()
 			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
 			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
 			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f,
-			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f
+			(float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, 0.0f 
 		};
 		int uniformLocPoints{ glGetUniformLocation(shader, "u_points") };
 		glUniform3fv(uniformLocPoints, _countof(points), points);
@@ -242,16 +243,16 @@ void Renderer::RenderRadarCircle()
 		// 수명
 		static float lifeTimes[]
 		{
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f,
-			(float)rand() / (float)RAND_MAX * 4.0f + 1.0f
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f,
+			(float)rand() / (float)RAND_MAX * 2.0f + 1.0f
 		};
 		int uniformLocLifetimes{ glGetUniformLocation(shader, "u_lifeTimes") };
 		glUniform1fv(uniformLocLifetimes, _countof(lifeTimes), lifeTimes);
@@ -274,6 +275,44 @@ void Renderer::RenderRadarCircle()
 	u_time += 0.005f;
 }
 
+void Renderer::RenderLine()
+{
+	static float u_time{ 0.0f };
+	constexpr GLsizei vertexSize{ sizeof(float) * 3 };
+
+	GLuint shader{ m_shaders["LINE"] };
+	glUseProgram(shader);
+
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["LINE"]);
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	{
+		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+		glUniform1f(uniformLocTime, u_time);
+	}
+
+	glDrawArrays(GL_LINE_STRIP, 0, m_vertexCounts["LINE"]);
+
+	// 비활성화
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+
+	u_time += 0.005f;
+}
+
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
 {
 	//Set window size
@@ -283,6 +322,7 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	//Load shaders
 	m_shaders["PARTICLE"] = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
 	m_shaders["FULLQUAD"] = CompileShaders("./Shaders/sandbox.vs", "./Shaders/sandbox.fs");
+	m_shaders["LINE"] = CompileShaders("./Shaders/line.vs", "./Shaders/line.fs");
 
 	// Create VBOs
 	CreateVertexBufferObjects();
@@ -315,7 +355,8 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 void Renderer::CreateVertexBufferObjects()
 {
 	//CreateParticle(1000);
-	CreateFullScreenQuad();
+	//CreateFullScreenQuad();
+	CreateLinePoints(2000);
 }
 
 void Renderer::CreateParticle(int particleCount)
@@ -430,6 +471,21 @@ void Renderer::CreateFullScreenQuad()
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	m_vertexCounts["FULLQUAD"] = _countof(vertices);
+}
+
+void Renderer::CreateLinePoints(int vertexCount)
+{
+	std::vector<float> vertices;
+	for (int i = 0; i < vertexCount; ++i)
+	{
+		vertices.push_back(std::lerp(-1.0f, 1.0f, static_cast<float>(i) / (vertexCount - 1)));
+		vertices.push_back(0.0f);
+		vertices.push_back(0.0f);
+	}
+	glGenBuffers(1, &m_vbos["LINE"]);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["LINE"]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+	m_vertexCounts["LINE"] = vertexCount;
 }
 
 void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)

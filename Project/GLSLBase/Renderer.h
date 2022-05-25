@@ -25,12 +25,14 @@ public:
 	void RenderParticle();
 	void RenderFullScreenQuad();
 	void RenderRadarCircle();
+	void RenderLine();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
 	void CreateVertexBufferObjects();
 	void CreateParticle(int count);
 	void CreateFullScreenQuad();
+	void CreateLinePoints(int vertexCount);
 
 	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
 	bool ReadFile(const std::string& filename, std::string& target);

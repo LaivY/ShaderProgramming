@@ -50,7 +50,7 @@ vec4 DrawCircles()
 vec4 DrawCirclesAtPoints()
 {
 	vec4 result = vec4(0);
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < 2; ++i)
 	{
 		float dist = distance(u_points[i].xy, v_color.xy);
 		float temp = 10.0f * dist * 4.0f * PI - u_time;
@@ -64,25 +64,27 @@ vec4 DrawCirclesAtPoints()
 
 vec4 RadarCircle()
 {
-	vec4 result = vec4(0);
+	const int thin = 1;				// 두께. 클 수록 얇아짐
+	const float frequency = 5.0f;	// 주기. 클 수록 원 사이의 거리가 짧음
+	const float speed = 10.0;		// 속도. 클 수록 원이 빠르게 움직임
 
+	vec4 result = vec4(0);
 	float dist = distance(vec2(0.5f, 0.0f), v_color.xy);
-	float sinValue = sin(dist * 5.0f * PI - u_time * 1.0f);
-	sinValue = pow(sinValue, 16);
+	float sinValue = sin(frequency * dist * PI - u_time * speed);
+	sinValue = pow(sinValue, thin);
+	sinValue = clamp(sinValue, 0.0f, 1.0f);
 	result = vec4(sinValue);
 
 	for (int i = 0; i < 10; ++i)
 	{
 		float d = distance(u_points[i].xy, v_color.xy);
-		float v = sin(1.0f * d * 4.0f * PI);
-		v = clamp(v, 0.0f, 1.0f);
-		if (d < 0.2f)
-			result += vec4(v);
+		if (d < 0.1f)
+			result += vec4(0.0f, (0.1f - d) * sinValue * 20.0f, 0.0f, 1.0f);
 	}
 	return result;
 }
 
 void main()
 {
-	FragColor = DrawCirclesAtPoints();
+	FragColor = RadarCircle();
 }
