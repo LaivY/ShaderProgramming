@@ -13,7 +13,7 @@ Renderer::Renderer(int windowSizeX, int windowSizeY) : m_Initialized{ false }, m
 	Initialize(windowSizeX, windowSizeY);
 }
 
-GLuint Renderer::CreatePngTexture(char* filePath)
+GLuint Renderer::CreatePngTexture(const char* filePath)
 {
 	//Load Pngs: Load file and decode image.
 	std::vector<unsigned char> image;
@@ -28,12 +28,10 @@ GLuint Renderer::CreatePngTexture(char* filePath)
 
 	GLuint temp;
 	glGenTextures(1, &temp);
-
 	glBindTexture(GL_TEXTURE_2D, temp);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &image[0]);
-
 	return temp;
 }
 
@@ -65,9 +63,10 @@ GLuint Renderer::CreateBmpTexture(char* filePath)
 void Renderer::Render()
 {
 	//RenderParticle();
-	RenderFullScreenQuad();
+	//RenderFullScreenQuad();
 	//RenderRadarCircle();
 	//RenderLine();
+	RenderTexture();
 }
 
 void Renderer::RenderParticle()
@@ -147,7 +146,7 @@ void Renderer::RenderFullScreenQuad()
 	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
 	{
 		{ "a_position", 3, 0 },
-		{ "a_color", 4, 3 },
+		{ "a_color",	4, 3 },
 	};
 
 	// 정점 데이터 셰이더로 넘김
@@ -181,6 +180,12 @@ void Renderer::RenderFullScreenQuad()
 		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
 		glUniform1f(uniformLocTime, u_time);
 	}
+
+	// 샘플러
+	int uniformLocSampler{ glGetUniformLocation(shader, "u_sampler") };
+	glUniform1i(uniformLocSampler, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_textures["TEXTURE0"]);
 
 	// 드로우콜
 	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["FULLQUAD"]);
@@ -313,6 +318,44 @@ void Renderer::RenderLine()
 	u_time += 0.005f;
 }
 
+void Renderer::RenderTexture()
+{
+	constexpr GLsizei vertexSize{ sizeof(float) * 5 };
+
+	GLuint shader{ m_shaders["TEXTURE"] };
+	glUseProgram(shader);
+
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 },
+		{ "a_uv",		2, 3 }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["TEXTURE"]);
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	// 텍스쳐 바인딩
+	{
+		int uniLocSampler{ glGetUniformLocation(shader, "u_sampler") };
+		glUniform1i(uniLocSampler, 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_textures["TEXTURE0"]);
+	}
+
+	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["TEXTURE"]);
+
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+}
+
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
 {
 	//Set window size
@@ -323,6 +366,10 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_shaders["PARTICLE"] = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
 	m_shaders["FULLQUAD"] = CompileShaders("./Shaders/sandbox.vs", "./Shaders/sandbox.fs");
 	m_shaders["LINE"] = CompileShaders("./Shaders/line.vs", "./Shaders/line.fs");
+	m_shaders["TEXTURE"] = CompileShaders("./Shaders/texture.vs", "./Shaders/texture.fs");
+
+	// Load Texture
+	m_textures["TEXTURE0"] = CreatePngTexture("./Textures/texture0.png");
 
 	// Create VBOs
 	CreateVertexBufferObjects();
@@ -355,8 +402,9 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 void Renderer::CreateVertexBufferObjects()
 {
 	//CreateParticle(1000);
-	CreateFullScreenQuad();
+	//CreateFullScreenQuad();
 	//CreateLinePoints(2000);
+	CreateFullScreenTextureQuad();
 }
 
 void Renderer::CreateParticle(int particleCount)
@@ -486,6 +534,25 @@ void Renderer::CreateLinePoints(int vertexCount)
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["LINE"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
 	m_vertexCounts["LINE"] = vertexCount;
+}
+
+void Renderer::CreateFullScreenTextureQuad()
+{
+	// 위치(3), 텍스쳐좌표(2)
+	constexpr float vertices[]
+	{
+		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+		-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+
+		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f
+	};
+	glGenBuffers(1, &m_vbos["TEXTURE"]);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["TEXTURE"]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	m_vertexCounts["TEXTURE"] = _countof(vertices);
 }
 
 void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)

@@ -1,4 +1,4 @@
-﻿#version 450
+#version 450
 
 in vec3			a_position;	// 위치
 in vec3			a_velocity;	// 속도

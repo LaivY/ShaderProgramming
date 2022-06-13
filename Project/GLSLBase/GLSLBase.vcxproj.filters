@@ -53,6 +53,12 @@
     <None Include="Shaders\line.vs">
       <Filter>Shader</Filter>
     </None>
+    <None Include="Shaders\texture.fs">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="Shaders\texture.vs">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source">

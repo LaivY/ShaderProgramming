@@ -18,7 +18,7 @@ public:
 	Renderer(int windowSizeX, int windowSizeY);
 	~Renderer() = default;
 
-	GLuint CreatePngTexture(char * filePath);
+	GLuint CreatePngTexture(const char* filePath);
 	GLuint CreateBmpTexture(char * filePath);
 	   
 	void Render();
@@ -26,6 +26,7 @@ public:
 	void RenderFullScreenQuad();
 	void RenderRadarCircle();
 	void RenderLine();
+	void RenderTexture();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
@@ -33,6 +34,7 @@ private:
 	void CreateParticle(int count);
 	void CreateFullScreenQuad();
 	void CreateLinePoints(int vertexCount);
+	void CreateFullScreenTextureQuad();
 
 	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
 	bool ReadFile(const std::string& filename, std::string& target);
@@ -58,4 +60,5 @@ private:
 	std::unordered_map<std::string, GLuint> m_shaders;
 	std::unordered_map<std::string, GLuint> m_vbos;
 	std::unordered_map<std::string, GLuint> m_vertexCounts;
+	std::unordered_map<std::string, GLuint> m_textures;
 };
