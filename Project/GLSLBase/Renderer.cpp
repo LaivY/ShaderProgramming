@@ -7,9 +7,7 @@
 
 Renderer::Renderer(int windowSizeX, int windowSizeY) : m_Initialized{ false }, m_WindowSizeX{ 0 }, m_WindowSizeY{ 0 }
 {
-	//default settings
 	glClearDepth(1.f);
-
 	Initialize(windowSizeX, windowSizeY);
 }
 
@@ -35,7 +33,7 @@ GLuint Renderer::CreatePngTexture(const char* filePath)
 	return temp;
 }
 
-GLuint Renderer::CreateBmpTexture(char* filePath)
+GLuint Renderer::CreateBmpTexture(const char* filePath)
 {
 	//Load Bmp: Load file and decode image.
 	unsigned int width, height;
@@ -66,7 +64,8 @@ void Renderer::Render()
 	//RenderFullScreenQuad();
 	//RenderRadarCircle();
 	//RenderLine();
-	RenderTexture();
+	//RenderTexture();
+	RenderGridRect();
 }
 
 void Renderer::RenderParticle()
@@ -356,6 +355,41 @@ void Renderer::RenderTexture()
 	}
 }
 
+void Renderer::RenderGridRect()
+{
+	static float u_time{ 0.0f };
+	constexpr GLsizei vertexSize{ sizeof(float) * 3 };
+	GLuint shader{ m_shaders["GRID"] };
+	glUseProgram(shader);
+
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["GRID"]);
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	{
+		int uniformLocTime{ glGetUniformLocation(shader, "u_time") };
+		glUniform1f(uniformLocTime, u_time);
+	}
+
+	glDrawArrays(GL_LINE_STRIP, 0, m_vertexCounts["GRID"]);
+
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+	u_time += 0.02f;
+}
+
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
 {
 	//Set window size
@@ -367,6 +401,7 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_shaders["FULLQUAD"] = CompileShaders("./Shaders/sandbox.vs", "./Shaders/sandbox.fs");
 	m_shaders["LINE"] = CompileShaders("./Shaders/line.vs", "./Shaders/line.fs");
 	m_shaders["TEXTURE"] = CompileShaders("./Shaders/texture.vs", "./Shaders/texture.fs");
+	m_shaders["GRID"] = CompileShaders("./Shaders/grid.vs", "./Shaders/grid.fs");
 
 	// Load Texture
 	m_textures["TEXTURE0"] = CreatePngTexture("./Textures/texture0.png");
@@ -404,7 +439,8 @@ void Renderer::CreateVertexBufferObjects()
 	//CreateParticle(1000);
 	//CreateFullScreenQuad();
 	//CreateLinePoints(2000);
-	CreateFullScreenTextureQuad();
+	//CreateFullScreenTextureQuad();
+	CreateGridMesh();
 }
 
 void Renderer::CreateParticle(int particleCount)
@@ -518,7 +554,7 @@ void Renderer::CreateFullScreenQuad()
 	glGenBuffers(1, &m_vbos["FULLQUAD"]);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["FULLQUAD"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	m_vertexCounts["FULLQUAD"] = _countof(vertices);
+	m_vertexCounts["FULLQUAD"] = _countof(vertices) / 7;
 }
 
 void Renderer::CreateLinePoints(int vertexCount)
@@ -533,75 +569,106 @@ void Renderer::CreateLinePoints(int vertexCount)
 	glGenBuffers(1, &m_vbos["LINE"]);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["LINE"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-	m_vertexCounts["LINE"] = vertexCount;
+	m_vertexCounts["LINE"] = vertexCount / 3;
 }
 
 void Renderer::CreateFullScreenTextureQuad()
 {
-	// 위치(3), 텍스쳐좌표(2)
 	constexpr float vertices[]
 	{
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-		-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+		// 위치(3)				// 텍스쳐좌표(2)
+		-1.0f, -1.0f, 0.0f,		0.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f,		1.0f, 1.0f,
+		-1.0f,  1.0f, 0.0f,		0.0f, 1.0f,
 
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-		 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f
+		-1.0f, -1.0f, 0.0f,		0.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f,		1.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f,		1.0f, 1.0f
 	};
 	glGenBuffers(1, &m_vbos["TEXTURE"]);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["TEXTURE"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	m_vertexCounts["TEXTURE"] = _countof(vertices);
+	m_vertexCounts["TEXTURE"] = _countof(vertices) / 5;
 }
 
-void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
+void Renderer::CreateGridMesh()
 {
-	// 쉐이더 오브젝트 생성
-	GLuint ShaderObj = glCreateShader(ShaderType);
+	float basePosX = -0.5f;
+	float basePosY = -0.5f;
+	float targetPosX = 0.5f;
+	float targetPosY = 0.5f;
 
-	if (ShaderObj == 0) {
-		fprintf(stderr, "Error creating shader type %d\n", ShaderType);
-	}
+	int pointCountX = 32;
+	int pointCountY = 32;
 
-	// 쉐이더 코드를 쉐이더 오브젝트에 할당
-	GLint length = (GLint)strlen(pShaderText);
-	glShaderSource(ShaderObj, 1, &pShaderText, &length);
+	float width = targetPosX - basePosX;
+	float height = targetPosY - basePosY;
 
-	//할당된 쉐이더 코드를 컴파일
-	glCompileShader(ShaderObj);
+	float* point = new float[pointCountX * pointCountY * 2];
+	float* vertices = new float[(pointCountX - 1) * (pointCountY - 1) * 2 * 3 * 3];
+	m_vertexCounts["GRID"] = (pointCountX - 1) * (pointCountY - 1) * 2 * 3;
 
-	GLint success;
-	// ShaderObj 가 성공적으로 컴파일 되었는지 확인
-	glGetShaderiv(ShaderObj, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		GLchar InfoLog[1024];
-
-		//OpenGL 의 shader log 데이터를 가져옴
-		glGetShaderInfoLog(ShaderObj, 1024, NULL, InfoLog);
-		fprintf(stderr, "Error compiling shader type %d: '%s'\n", ShaderType, InfoLog);
-		printf("%s \n", pShaderText);
-	}
-
-	// ShaderProgram 에 attach!!
-	glAttachShader(ShaderProgram, ShaderObj);
-}
-
-bool Renderer::ReadFile(const std::string& filename, std::string& target)
-{
-	std::ifstream file(filename);
-	if (file.fail())
+	// Prepare points
+	for (int x = 0; x < pointCountX; x++)
 	{
-		std::cout << filename << " file loading failed.. \n";
-		file.close();
-		return false;
+		for (int y = 0; y < pointCountY; y++)
+		{
+			point[(y * pointCountX + x) * 2 + 0] = basePosX + width * (x / (float)(pointCountX - 1));
+			point[(y * pointCountX + x) * 2 + 1] = basePosY + height * (y / (float)(pointCountY - 1));
+		}
 	}
-	std::string line;
-	while (getline(file, line)) {
-		target.append(line.c_str());
-		target.append("\n");
+
+	//Make triangles
+	int vertIndex = 0;
+	for (int x = 0; x < pointCountX - 1; x++)
+	{
+		for (int y = 0; y < pointCountY - 1; y++)
+		{
+			//Triangle part 1
+			vertices[vertIndex] = point[(y * pointCountX + x) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[(y * pointCountX + x) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + (x + 1)) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + (x + 1)) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + x) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + x) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+
+			//Triangle part 2
+			vertices[vertIndex] = point[(y * pointCountX + x) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[(y * pointCountX + x) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+			vertices[vertIndex] = point[(y * pointCountX + (x + 1)) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[(y * pointCountX + (x + 1)) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + (x + 1)) * 2 + 0];
+			vertIndex++;
+			vertices[vertIndex] = point[((y + 1) * pointCountX + (x + 1)) * 2 + 1];
+			vertIndex++;
+			vertices[vertIndex] = 0.f;
+			vertIndex++;
+		}
 	}
-	return true;
+
+	glGenBuffers(1, &m_vbos["GRID"]);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["GRID"]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (pointCountX - 1) * (pointCountY - 1) * 2 * 3 * 3, vertices, GL_STATIC_DRAW);
 }
 
 GLuint Renderer::CompileShaders(const std::string& filenameVS, const std::string& filenameFS)
@@ -660,6 +727,51 @@ GLuint Renderer::CompileShaders(const std::string& filenameVS, const std::string
 	std::cout << filenameVS << ", " << filenameFS << " Shader compiling is done.\n";
 
 	return ShaderProgram;
+}
+
+void Renderer::AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
+{
+	// 쉐이더 오브젝트 생성
+	GLuint ShaderObj = glCreateShader(ShaderType);
+	if (!ShaderObj)
+		fprintf(stderr, "Error creating shader type %d\n", ShaderType);
+
+	// 쉐이더 코드를 쉐이더 오브젝트에 할당
+	GLint length = (GLint)strlen(pShaderText);
+	glShaderSource(ShaderObj, 1, &pShaderText, &length);
+
+	//할당된 쉐이더 코드를 컴파일
+	glCompileShader(ShaderObj);
+
+	GLint success;
+	// ShaderObj 가 성공적으로 컴파일 되었는지 확인
+	glGetShaderiv(ShaderObj, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		// OpenGL 의 shader log 데이터를 가져옴
+		GLchar InfoLog[1024];
+		glGetShaderInfoLog(ShaderObj, 1024, NULL, InfoLog);
+		fprintf(stderr, "Error compiling shader type %d: '%s'\n", ShaderType, InfoLog);
+		printf("%s \n", pShaderText);
+	}
+
+	// ShaderProgram 에 attach!!
+	glAttachShader(ShaderProgram, ShaderObj);
+}
+
+bool Renderer::ReadFile(const std::string& filename, std::string& target)
+{
+	std::ifstream file{ filename };
+	if (!file)
+	{
+		std::cout << filename << " file loading failed.. \n";
+		return false;
+	}
+
+	std::string line;
+	while (std::getline(file, line))
+		target.append(line + "\n");
+	return true;
 }
 
 unsigned char* Renderer::loadBMPRaw(const char * imagepath, unsigned int& outWidth, unsigned int& outHeight)

@@ -19,14 +19,15 @@ public:
 	~Renderer() = default;
 
 	GLuint CreatePngTexture(const char* filePath);
-	GLuint CreateBmpTexture(char * filePath);
-	   
+	GLuint CreateBmpTexture(const char* filePath);
+
 	void Render();
 	void RenderParticle();
 	void RenderFullScreenQuad();
 	void RenderRadarCircle();
 	void RenderLine();
 	void RenderTexture();
+	void RenderGridRect();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
@@ -35,6 +36,7 @@ private:
 	void CreateFullScreenQuad();
 	void CreateLinePoints(int vertexCount);
 	void CreateFullScreenTextureQuad();
+	void CreateGridMesh();
 
 	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
 	bool ReadFile(const std::string& filename, std::string& target);
@@ -44,8 +46,8 @@ private:
 
 private:
 	bool			m_Initialized;
-	unsigned int	m_WindowSizeX;
-	unsigned int	m_WindowSizeY;
+	UINT			m_WindowSizeX;
+	UINT			m_WindowSizeY;
 
 	glm::vec3		m_v3Camera_Position;
 	glm::vec3		m_v3Camera_Lookat;
