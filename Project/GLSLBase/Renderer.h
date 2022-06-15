@@ -28,6 +28,8 @@ public:
 	void RenderLine();
 	void RenderTexture();
 	void RenderGridRect();
+	void RenderFullTexture(GLuint fbo);
+	void RenderMultiTexture();
 
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
@@ -37,6 +39,7 @@ private:
 	void CreateLinePoints(int vertexCount);
 	void CreateFullScreenTextureQuad();
 	void CreateGridMesh();
+	void CreateFrameBufferObjects();
 
 	GLuint CompileShaders(const std::string& filenameVS, const std::string& filenameFS);
 	bool ReadFile(const std::string& filename, std::string& target);
@@ -63,4 +66,5 @@ private:
 	std::unordered_map<std::string, GLuint> m_vbos;
 	std::unordered_map<std::string, GLuint> m_vertexCounts;
 	std::unordered_map<std::string, GLuint> m_textures;
+	std::unordered_map<std::string, GLuint> m_fbos;
 };

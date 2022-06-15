@@ -65,7 +65,8 @@ void Renderer::Render()
 	//RenderRadarCircle();
 	//RenderLine();
 	//RenderTexture();
-	RenderGridRect();
+	//RenderGridRect();
+	RenderMultiTexture();
 }
 
 void Renderer::RenderParticle()
@@ -390,6 +391,61 @@ void Renderer::RenderGridRect()
 	u_time += 0.02f;
 }
 
+void Renderer::RenderFullTexture(GLuint fbo)
+{
+	constexpr GLsizei vertexSize{ sizeof(float) * 7 };
+
+	GLuint shader{ m_shaders["FULL_TEXTURE"] };
+	glUseProgram(shader);
+
+	// VBO 바인딩
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["TEXTURE"]);
+
+	// 정점 데이터 입력 레이아웃
+	std::vector<std::tuple<std::string, int, int>> vertexInputLayout
+	{
+		{ "a_position", 3, 0 },
+		{ "a_color",	4, 3 }
+	};
+
+	// 정점 데이터 셰이더로 넘김
+	for (const auto& [name, size, pointer] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glEnableVertexAttribArray(attribLocation);
+		glVertexAttribPointer(attribLocation, size, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(sizeof(float) * pointer));
+	}
+
+	// 샘플러
+	int uniformLocSampler{ glGetUniformLocation(shader, "u_sampler") };
+	glUniform1i(uniformLocSampler, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, fbo);
+
+	// 드로우콜
+	glDrawArrays(GL_TRIANGLES, 0, m_vertexCounts["FULLQUAD"]);
+
+	// 비활성화
+	for (const auto& [name, _, __] : vertexInputLayout)
+	{
+		int attribLocation{ glGetAttribLocation(shader, name.c_str()) };
+		glDisableVertexAttribArray(attribLocation);
+	}
+}
+
+void Renderer::RenderMultiTexture()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, m_textures["FRAME_BUFFER_0"]);
+	glViewport(0, 0, 512, 512);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	RenderParticle();
+
+	// 메인 프레임버퍼
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, 250, 250);
+	RenderFullTexture(m_textures["FRAME_TEXTURE_0"]);
+}
+
 void Renderer::Initialize(int windowSizeX, int windowSizeY)
 {
 	//Set window size
@@ -402,12 +458,16 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_shaders["LINE"] = CompileShaders("./Shaders/line.vs", "./Shaders/line.fs");
 	m_shaders["TEXTURE"] = CompileShaders("./Shaders/texture.vs", "./Shaders/texture.fs");
 	m_shaders["GRID"] = CompileShaders("./Shaders/grid.vs", "./Shaders/grid.fs");
+	m_shaders["FULL_TEXTURE"] = CompileShaders("./Shaders/fullTexture.vs", "./Shaders/fullTexture.fs");
 
 	// Load Texture
 	m_textures["TEXTURE0"] = CreatePngTexture("./Textures/texture0.png");
 
 	// Create VBOs
 	CreateVertexBufferObjects();
+
+	// Create FBOs
+	CreateFrameBufferObjects();
 
 	//Initialize camera settings
 	m_v3Camera_Position = glm::vec3(0.f, 0.f, 1000.f);
@@ -436,10 +496,10 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 
 void Renderer::CreateVertexBufferObjects()
 {
-	//CreateParticle(1000);
-	//CreateFullScreenQuad();
-	//CreateLinePoints(2000);
-	//CreateFullScreenTextureQuad();
+	CreateParticle(1000);
+	CreateFullScreenQuad();
+	CreateLinePoints(2000);
+	CreateFullScreenTextureQuad();
 	CreateGridMesh();
 }
 
@@ -589,6 +649,28 @@ void Renderer::CreateFullScreenTextureQuad()
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbos["TEXTURE"]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	m_vertexCounts["TEXTURE"] = _countof(vertices) / 5;
+}
+
+void Renderer::CreateFrameBufferObjects()
+{
+	glGenTextures(1, &m_textures["FRAME_TEXTURE_0"]);
+	glBindTexture(GL_TEXTURE_2D, m_textures["FRAME_TEXTURE_0"]);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+	glGenRenderbuffers(1, &m_textures["DEPTH_BUFFER_0"]);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_textures["DEPTH_BUFFER_0"]);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 512, 512);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	glGenFramebuffers(1, &m_textures["FRAME_BUFFER_0"]);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_textures["FRAME_BUFFER_0"]);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_textures["FRAME_TEXTURE_0"], 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_textures["DEPTH_BUFFER_0"]);
 }
 
 void Renderer::CreateGridMesh()

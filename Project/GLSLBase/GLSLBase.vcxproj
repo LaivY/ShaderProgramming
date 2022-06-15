@@ -172,6 +172,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\fullTexture.fs" />
+    <None Include="Shaders\fullTexture.vs" />
     <None Include="Shaders\grid.fs" />
     <None Include="Shaders\grid.vs" />
     <None Include="Shaders\line.fs" />

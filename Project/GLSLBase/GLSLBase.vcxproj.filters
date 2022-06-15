@@ -65,6 +65,12 @@
     <None Include="Shaders\grid.vs">
       <Filter>Shader</Filter>
     </None>
+    <None Include="Shaders\fullTexture.fs">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="Shaders\fullTexture.vs">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source">
